@@ -7,7 +7,7 @@ enum OnlineStatus {
       case OnlineStatus.online:
         return 'You are online';
       case OnlineStatus.offline:
-        return 'You are offline';
+        return 'Offline Mode: showing cached tickets.';
     }
   }
 
