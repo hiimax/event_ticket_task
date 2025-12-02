@@ -34,21 +34,58 @@ class TicketsProvider extends BaseChangeNotifier {
   }
 
   void updateTicketFavorite(int index) {
-    _allEventTickets.data[index] = _allEventTickets.data[index].copyWith(
-      favorited: !_allEventTickets.data[index].favorited,
+    // Get the ticket from the filtered list
+    final ticket = _allEventTicketsData[index];
+
+    // Find the index of this ticket in the main list
+    final mainIndex = _allEventTickets.data.indexWhere(
+      (element) => element.ticketRef == ticket.ticketRef,
     );
-    locator.get<SharedPrefs>().offlineTickets = jsonEncode(_allEventTickets);
-    notifyListeners();
+
+    if (mainIndex != -1) {
+      // Update the ticket in the main list
+      _allEventTickets.data[mainIndex] = _allEventTickets.data[mainIndex]
+          .copyWith(favorited: !_allEventTickets.data[mainIndex].favorited);
+
+      // Update the filtered list to reflect the change immediately
+      _allEventTicketsData[index] = _allEventTickets.data[mainIndex];
+
+      // Persist the updated main list
+      locator.get<SharedPrefs>().offlineTickets = jsonEncode(
+        _allEventTickets.toJson(),
+      );
+      notifyListeners();
+    }
   }
 
   void updateTicketPurchased(int index) {
-    _allEventTickets.data[index] = _allEventTickets.data[index].copyWith(
-      purchased: !_allEventTickets.data[index].purchased,
-      quantityAvailable: _allEventTickets.data[index].quantityAvailable - 1,
-      purchasedAt: DateTime.now().toString(),
+    // Get the ticket from the filtered list
+    final ticket = _allEventTicketsData[index];
+
+    // Find the index of this ticket in the main list
+    final mainIndex = _allEventTickets.data.indexWhere(
+      (element) => element.ticketRef == ticket.ticketRef,
     );
-    // locator.get<SharedPrefs>().offlineTickets = jsonEncode(_allEventTickets);
-    notifyListeners();
+
+    if (mainIndex != -1) {
+      // Update the ticket in the main list
+      _allEventTickets.data[mainIndex] = _allEventTickets.data[mainIndex]
+          .copyWith(
+            purchased: true, // Assuming purchased toggles to true
+            quantityAvailable:
+                _allEventTickets.data[mainIndex].quantityAvailable - 1,
+            purchasedAt: DateTime.now().toString(),
+          );
+
+      // Update the filtered list to reflect the change immediately
+      _allEventTicketsData[index] = _allEventTickets.data[mainIndex];
+
+      // Persist the updated main list
+      locator.get<SharedPrefs>().offlineTickets = jsonEncode(
+        _allEventTickets.toJson(),
+      );
+      notifyListeners();
+    }
   }
 
   bool _isOnline = locator.get<SharedPrefs>().offlineMode;
@@ -65,8 +102,22 @@ class TicketsProvider extends BaseChangeNotifier {
   bool get isUserInLagos => _isUserInLagos;
 
   void updateTicketLocation() {
-    _allEventTicketsData = _allEventTickets.data.toList();
-    print(_allEventTicketsData);
+    if (_isUserInLagos) {
+      _allEventTicketsData =
+          _allEventTickets.data
+              .where(
+                (element) => element.location.toLowerCase().contains('lagos'),
+              )
+              .toList();
+    } else {
+      _allEventTicketsData =
+          _allEventTickets.data
+              .where(
+                (element) => element.location.toLowerCase().contains('abuja'),
+              )
+              .toList();
+    }
+    // print(_allEventTicketsData);
     notifyListeners();
   }
 
@@ -94,6 +145,7 @@ class TicketsProvider extends BaseChangeNotifier {
         success: (data) {
           if (data != null) {
             _allEventTickets = data.data ?? TicketResponseModel.empty();
+            updateTicketLocation(); // Apply filter after fetching
             onSuccess(data.message ?? 'Success Call');
           }
         },
